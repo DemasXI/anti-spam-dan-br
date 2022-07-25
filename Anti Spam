@@ -1,0 +1,146 @@
+#define FILTERSCRIPT
+
+#include <a_samp>
+
+#if defined FILTERSCRIPT
+#endif
+enum Info
+{
+   AdminLevel,
+}
+
+new Warnings;
+new SpamCount[MAX_PLAYERS];
+new ChatSpamTime[MAX_PLAYERS][3];
+new muted[MAX_PLAYERS];
+#define AutoUnmuteTime 2
+new string[128];
+new PlayerInfo[MAX_PLAYERS][Info];
+#define MAX_MG 3
+new MG [] = //You can add more symbols, characters in here
+{
+    "PG",
+    "MG",
+    "RK",
+    "admin",
+    "id",
+    "hack",
+    "bug",
+    "SK",
+    "BK",
+    "fuck",
+    "bitch",
+    "gay",
+    "stupid",
+    "@",
+    "#",
+    "^",
+    "&",
+};
+public OnPlayerText(playerid, text[])
+{
+        for(new i = 0; i < sizeof(MG); i++)
+    {
+       if(strfind(text, MG[i], true) != -1 && PlayerInfo[playerid][AdminLevel] == 0)
+        {
+			Warnings++;
+            format(string, sizeof(string), "{FF0000}[Info]: {FFFFFF}Meta Gaming! {FF0000}WARNINGS: {15FF00}[%d/%d]", Warnings, MAX_MG);
+            SendClientMessage(playerid, -1, string);
+            return 0;
+		}
+	}
+        
+    	if(muted[playerid] == 1)
+	{
+		SendClientMessage(playerid, 0xFF0000FF, "You have been muted!(Reason:SPAM)");
+		return 0;
+	}
+	else
+	{
+        if(PlayerInfo[playerid][AdminLevel] == 0)
+	    {
+	        AntiSpam(playerid);
+        }
+    }
+
+        return 1;
+
+}
+
+public OnPlayerSpawn(playerid)
+{
+        SetTimerEx("Check", 2000, false, "i", playerid);
+        return 1;
+}
+forward Check(playerid);
+public Check(playerid)
+{
+        new string[128], name[MAX_PLAYER_NAME];
+        GetPlayerName(playerid, name, sizeof(name));
+        if(Warnings == MAX_MG)
+        {
+                format(string, sizeof(string), "{FF0000}[Info]:{FF0000}%s {FFFFFF}has been kicked {FF0000}Reason: MG.", name);
+                SendClientMessageToAll(-1, string);
+                Kick(playerid);
+        }
+        return 1;
+}
+
+stock AntiSpam(playerid)
+{
+	SpamCount[playerid]++;
+	switch (SpamCount[playerid])
+	{
+		case 1:
+		{
+			ChatSpamTime[playerid][0]=gettime();
+		}
+		case 2:
+		{
+			if((gettime()-ChatSpamTime[playerid][0])<5)
+			{
+				SendClientMessage(playerid,0xFF0000FF,"You are having some warnings (1/3)! (Reason: Spam)");
+				ChatSpamTime[playerid][1]=gettime();
+			}
+			else SpamCount[playerid]=0;
+		}
+		case 3:
+		{
+			if((gettime()-ChatSpamTime[playerid][1])<5)
+			{
+				SendClientMessage(playerid,0xFF0000FF,"You are having some warning (2/3)! (Reason: Spam)");
+				ChatSpamTime[playerid][2]=gettime();
+			}
+			else SpamCount[playerid]=0;
+		}
+		case 4..50:
+		{
+			new string[128],name[24];
+			GetPlayerName(playerid,name,24);
+			if((gettime()-ChatSpamTime[playerid][2])<5)
+			{
+				format(string,sizeof(string),"Player %s has been muted for 2 minutes! (Reason: Spam!)",name);
+				SendClientMessageToAll(0xFF0000FF,string);
+				SendClientMessage(playerid,0xFF0000FF,"You have received your final warning (3/3)! (Reason: Spam)");
+				muted[playerid]=1;
+				SetTimerEx("AutoUnMute",AutoUnmuteTime*60000,false,"i",playerid);
+			}
+		}
+	}
+	return 1;
+}
+public OnPlayerConnect(playerid)
+{
+	SpamCount[playerid]=0;
+    muted[playerid]=0;
+	return 1;
+}
+
+forward AutoUnMute(pID);
+public AutoUnMute(pID)
+{
+	muted[pID] = 0;
+	SpamCount[pID]=0;
+	SendClientMessage(pID, 0xFF0000FF, "Now you can talk, but don't Spam again!");
+	return 1;
+}
